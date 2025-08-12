@@ -34,20 +34,11 @@ export default function tabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="create"
+        name="cart"
         options={{
-          title: "Create",
+          title: "Cart",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="add-circle-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
+            <Ionicons name="cart-outline" size={size} color={color} />
           ),
         }}
       />

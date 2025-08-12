@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import axios from "axios";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
-import { FlatList, ScrollView, Text, View } from "react-native";
+import { Alert, FlatList, ScrollView, Text, View } from "react-native";
 import styles from "../../assets/styles/login.styles";
 import Loader from "../../components/Loader";
 import { API_URL } from "../../constants/api";
@@ -9,37 +10,54 @@ import COLORS from "../../constants/colors";
 
 import { TouchableOpacity } from "react-native";
 import { useAuthStore } from "../../store/authStore";
+import { useCartStore } from "../../store/cartStore";
 
 const index = () => {
-  const { token } = useAuthStore();
+  const { token, logout } = useAuthStore();
+
+  // state => state.addToCart is a selector
+
+  //That arrow function means: “From the store’s state, give me only the addToCart function.” You’re not grabbing all of state, only state.addToCart
+  const addToCart = useCartStore((state) => state.addToCart);
   const [products, setProducts] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
 
+  const confirmLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Logout", onPress: () => logout(), style: "destructive" },
+    ]);
+  };
   const categories = ["All", "Electronics", "Clothing", "Sports", "Furniture"];
 
   // FETCH DATA
+
   const fetchGoods = async () => {
     try {
       setLoading(true);
 
-      const response = await fetch(`${API_URL}/api/products/featured`, {
+      const res = await axios.get(`${API_URL}/api/products/featured`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      // console.log("water");
 
-      const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.message || "Failed to fetch books");
-      // console.log(data.data);
-
-      const goods = data.featuredProducts;
+      // Axios automatically parses JSON, so no need for response.json()
+      const goods = res.data.featuredProducts;
 
       setProducts(goods);
+
       setAllProducts(goods);
     } catch (error) {
-      console.log("error fetching books", error);
+      // Axios errors may contain response data from the server
+      if (error.response) {
+        console.log(
+          "Error fetching books:",
+          error.response.data.message || error.message
+        );
+      } else {
+        console.log("Error fetching books:", error.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -50,7 +68,7 @@ const index = () => {
     fetchGoods();
   }, []);
 
-  // FINCTION THAT SORTS PRODUCT BASED ON THE CATEGORY
+  // FUNCTION THAT SORTS PRODUCT BASED ON THE CATEGORY
   const handleCategoryPress = (category) => {
     setSelectedCategory(category);
     if (category === "All") {
@@ -111,6 +129,10 @@ const index = () => {
           elevation: 2,
           marginTop: 10,
         }}
+        onPress={() => {
+          console.log("Product ID being sent:", item._id);
+          addToCart(item._id, token);
+        }}
       >
         <Text
           style={{
@@ -127,6 +149,9 @@ const index = () => {
   if (loading) return <Loader />;
   return (
     <View style={{ paddingHorizontal: 10 }}>
+      <TouchableOpacity onPress={confirmLogout}>
+        <Text>LOGOUT</Text>
+      </TouchableOpacity>
       {/* START OF CATEGORY */}
       <ScrollView
         horizontal
@@ -168,7 +193,7 @@ const index = () => {
         keyExtractor={(item) => item._id}
         showsVerticalScrollIndicator={false}
         numColumns={2}
-        contentContainerStyle={{ paddingBottom: 60 }}
+        contentContainerStyle={{ paddingBottom: 80 }}
         columnWrapperStyle={{
           justifyContent: "space-between", // space between the two columns
         }}
