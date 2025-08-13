@@ -37,7 +37,7 @@ const index = () => {
   const fetchGoods = async () => {
     try {
       setLoading(true);
-
+      console.log("Calling:", `${API_URL}/api/auth/login`);
       const res = await axios.get(`${API_URL}/api/products/featured`, {
         headers: { Authorization: `Bearer ${token}` },
       });

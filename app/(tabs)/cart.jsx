@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import {
   FlatList,
@@ -14,20 +15,28 @@ import { useCartStore } from "../../store/cartStore";
 
 export default function CartScreen() {
   const { token } = useAuthStore();
+  const router = useRouter(); // ADD THIS LINE
   const {
     cartItems,
     fetchCart,
+    totalAmount,
     removeFromCart,
     incrementQuantity,
     decrementQuantity,
+    clearCart,
   } = useCartStore();
-
+  const getSingleTotal = (item) => {
+    return Math.round(item.price * item.quantity);
+  };
   useEffect(() => {
     fetchCart(token);
   }, [token]);
 
   const handleRemoveItem = async (productId) => {
     await removeFromCart(productId, token);
+  };
+  const handleClearcart = async () => {
+    await clearCart(token);
   };
 
   const handleIncrement = async (productId) => {
@@ -44,10 +53,10 @@ export default function CartScreen() {
 
       <View style={styles.productInfo}>
         <Text style={styles.productName}>{item.name}</Text>
-        <Text style={styles.productPrice}>${item.price}</Text>
+        <Text>Subtotal: ${getSingleTotal(item)}</Text>
 
         <View style={styles.quantityContainer}>
-          <Text style={styles.quantityLabel}>Qty: {item.quantity}</Text>
+          <Text style={styles.quantityLabel}>{item.price}</Text>
 
           {/* Quantity Controls */}
           <View style={styles.quantityControls}>
@@ -56,7 +65,7 @@ export default function CartScreen() {
               style={[styles.quantityButton, styles.decrementButton]}
               onPress={() => handleDecrement(item._id)}
             >
-              <Ionicons name="remove" size={18} color="white" />
+              <Ionicons name="remove" size={18} color="black" />
             </TouchableOpacity>
 
             <Text style={styles.quantityText}>{item.quantity}</Text>
@@ -66,7 +75,7 @@ export default function CartScreen() {
               style={[styles.quantityButton, styles.incrementButton]}
               onPress={() => handleIncrement(item._id)}
             >
-              <Ionicons name="add" size={18} color="white" />
+              <Ionicons name="add" size={18} color="black" />
             </TouchableOpacity>
           </View>
         </View>
@@ -84,6 +93,17 @@ export default function CartScreen() {
 
   return (
     <View style={styles.container}>
+      <Text
+        style={{
+          alignSelf: "center",
+          fontSize: 20,
+          fontWeight: "bold",
+          marginTop: 15,
+          paddingBottom: 10,
+        }}
+      >
+        Shopping cart
+      </Text>
       {cartItems.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons
@@ -103,6 +123,35 @@ export default function CartScreen() {
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContainer}
+          ListFooterComponent={
+            cartItems.length > 0 && (
+              <View>
+                <View style={styles.totalContainer}>
+                  <Text style={styles.totalText}>Total:</Text>
+                  <Text style={styles.totalText}>${totalAmount}</Text>
+                </View>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: COLORS.primary,
+                    borderRadius: 12,
+                    height: 50,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    marginTop: 16,
+                    shadowColor: COLORS.black,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                    elevation: 2,
+                  }}
+                  onPress={() => router.push("/(payment)")}
+                >
+                  <Text style={{ color: "white" }}>Shipping</Text>
+                </TouchableOpacity>
+              </View>
+            )
+          }
         />
       )}
     </View>
@@ -136,6 +185,20 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 12,
   },
+  totalContainer: {
+    backgroundColor: "#c8e6c9ff",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: "white",
+    borderRadius: 6,
+  },
+  totalText: {
+    fontSize: 17,
+    fontWeight: "bold",
+    color: "black",
+  },
   productInfo: {
     flex: 1,
   },
@@ -155,6 +218,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    marginTop: 5,
   },
   quantityLabel: {
     fontSize: 14,
@@ -172,10 +236,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   decrementButton: {
-    backgroundColor: "#ff6b6b",
+    backgroundColor: "#edc2c2ff",
   },
   incrementButton: {
-    backgroundColor: "#51cf66",
+    backgroundColor: "#c2edc6ff",
   },
   quantityText: {
     fontSize: 16,

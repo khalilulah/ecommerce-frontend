@@ -1,3 +1,5 @@
+import { StripeProvider } from "@stripe/stripe-react-native";
+
 import { Stack, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -25,13 +27,15 @@ export default function RootLayout() {
   }, [token]);
 
   return (
-    <SafeAreaProvider>
-      <SafeScreen>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-        </Stack>
-      </SafeScreen>
-    </SafeAreaProvider>
+    <StripeProvider publishableKey="pk_test_51RtPZt1bqg9t4OMg13T5XzZysgTkqAolgvenYPEfJxPN9Vua5rOqq841ZNl2xivBiiT4CDVcNq2JH87UbadV8UJM00qhNx2DKU">
+      <SafeAreaProvider>
+        <SafeScreen>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(tabs)" />
+          </Stack>
+        </SafeScreen>
+      </SafeAreaProvider>
+    </StripeProvider>
   );
 }

@@ -4,6 +4,7 @@ import { API_URL } from "../constants/api";
 
 export const useCartStore = create((set, get) => ({
   cartItems: [],
+  totalAmount: 0,
 
   fetchCart: async (token) => {
     try {
@@ -11,8 +12,11 @@ export const useCartStore = create((set, get) => ({
         headers: { Authorization: `Bearer ${token}` },
       });
       // console.log("API response:", data);
-      set({ cartItems: data });
-      // console.log(get().cartItems);
+      set({
+        cartItems: data.cartItems || data,
+        totalAmount: data.totalAmount || 0,
+      });
+      // console.log(get().totalAmount);
     } catch (error) {
       console.log("Error fetching cart:", error.message);
     }
@@ -35,6 +39,7 @@ export const useCartStore = create((set, get) => ({
       console.log("Error adding to cart:", err.message);
     }
   },
+
   removeFromCart: async (productId, token) => {
     try {
       await axios.delete(`${API_URL}/api/cart/${productId}`, {
@@ -76,6 +81,17 @@ export const useCartStore = create((set, get) => ({
       await get().fetchCart(token); // refresh cart
     } catch (error) {
       console.log("Error decrementing quantity:", error.message);
+    }
+  },
+  clearCart: async (token) => {
+    try {
+      await axios.delete(`${API_URL}/api/cart`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      // set({ cartItems: data });
+      await get().fetchCart(token); // refresh cart
+    } catch (error) {
+      console.log("Error deleting:", error.message);
     }
   },
 }));
