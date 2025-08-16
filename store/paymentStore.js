@@ -48,7 +48,7 @@ export const usePaymentStore = create((set, get) => ({
     }
   },
 
-  // Add this one function to your existing usePaymentStore
+  //  usePaymentStore
   createPaymentSheet: async (products, token) => {
     set({ isLoading: true });
     try {

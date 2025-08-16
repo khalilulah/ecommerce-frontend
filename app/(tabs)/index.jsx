@@ -2,7 +2,16 @@ import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
-import { Alert, FlatList, ScrollView, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import styles from "../../assets/styles/login.styles";
 import Loader from "../../components/Loader";
 import { API_URL } from "../../constants/api";
@@ -14,15 +23,18 @@ import { useCartStore } from "../../store/cartStore";
 
 const index = () => {
   const { token, logout } = useAuthStore();
-
-  // state => state.addToCart is a selector
-
-  //That arrow function means: “From the store’s state, give me only the addToCart function.” You’re not grabbing all of state, only state.addToCart
   const addToCart = useCartStore((state) => state.addToCart);
+
   const [products, setProducts] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
   const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasMore, setHasmore] = useState(false);
+  const [page, setPage] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState("All");
+
+  // Search states
+  const [searchQuery, setSearchQuery] = useState("");
 
   const confirmLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -30,36 +42,87 @@ const index = () => {
       { text: "Logout", onPress: () => logout(), style: "destructive" },
     ]);
   };
+
   const categories = ["All", "Electronics", "Clothing", "Sports", "Furniture"];
 
-  // FETCH DATA
+  // SEARCH FUNCTION
+  const handleSearch = (text) => {
+    setSearchQuery(text);
+    applyFilters(allProducts, text, selectedCategory);
+  };
 
-  const fetchGoods = async () => {
+  // UNIFIED FILTER FUNCTION - applies search and category filters to the given product list
+  const applyFilters = (productList, search, category) => {
+    let filtered = productList;
+
+    // Apply category filter first
+    if (category !== "All") {
+      filtered = filtered.filter((item) => item.category === category);
+    }
+
+    // Apply search filter
+    if (search.trim() !== "") {
+      filtered = filtered.filter(
+        (item) =>
+          item.name.toLowerCase().includes(search.toLowerCase()) ||
+          item.description.toLowerCase().includes(search.toLowerCase()) ||
+          item.category.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    setProducts(filtered);
+  };
+
+  // FETCH DATA - always fetches all products for client-side filtering
+  const fetchGoods = async (pageNum = 1, isRefreshing = false) => {
     try {
-      setLoading(true);
-      console.log("Calling:", `${API_URL}/api/auth/login`);
-      const res = await axios.get(`${API_URL}/api/products/featured`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      if (isRefreshing) {
+        setRefreshing(true);
+      } else if (pageNum === 1) {
+        setLoading(true);
+      }
 
-      // Axios automatically parses JSON, so no need for response.json()
+      const res = await axios.get(
+        `${API_URL}/api/products/featured?page=${pageNum}&limit=6`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
       const goods = res.data.featuredProducts;
 
-      setProducts(goods);
+      let uniqueGoods;
+      if (pageNum === 1 || isRefreshing) {
+        // First page or refresh - replace all products
+        uniqueGoods = goods;
+      } else {
+        // Subsequent pages - merge with existing, avoid duplicates
+        uniqueGoods = [
+          ...new Map(
+            [...allProducts, ...goods].map((p) => [p._id, p])
+          ).values(),
+        ];
+      }
 
-      setAllProducts(goods);
+      setAllProducts(uniqueGoods);
+      setHasmore(pageNum < res.data.totalPages);
+      setPage(pageNum);
+
+      // Apply current filters after fetching
+      applyFilters(uniqueGoods, searchQuery, selectedCategory);
     } catch (error) {
-      // Axios errors may contain response data from the server
+      console.error("Error fetching products:", error);
       if (error.response) {
-        console.log(
-          "Error fetching books:",
-          error.response.data.message || error.message
+        Alert.alert(
+          "Error",
+          error.response.data.message || "Failed to fetch products"
         );
       } else {
-        console.log("Error fetching books:", error.message);
+        Alert.alert("Error", "Network error. Please check your connection.");
       }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -68,14 +131,32 @@ const index = () => {
     fetchGoods();
   }, []);
 
-  // FUNCTION THAT SORTS PRODUCT BASED ON THE CATEGORY
+  const loadMore = async () => {
+    // Only load more if:
+    // 1. There are more pages available
+    // 2. Not currently loading
+    // 3. Not currently searching (since search works on local data)
+    if (hasMore && !loading && searchQuery.trim() === "") {
+      await fetchGoods(page + 1);
+    }
+  };
+
+  // FUNCTION THAT HANDLES CATEGORY SELECTION
   const handleCategoryPress = (category) => {
     setSelectedCategory(category);
-    if (category === "All") {
-      setProducts(allProducts);
-    } else {
-      setProducts(allProducts.filter((item) => item.category === category));
-    }
+    // Apply filters to existing data
+    applyFilters(allProducts, searchQuery, category);
+  };
+
+  // HANDLE REFRESH
+  const handleRefresh = async () => {
+    setPage(1);
+    await fetchGoods(1, true);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    applyFilters(allProducts, "", selectedCategory);
   };
 
   const renderItem = ({ item }) => (
@@ -113,7 +194,7 @@ const index = () => {
         </Text>
         <Text
           style={{ fontSize: 13, color: COLORS.textSecondary }}
-          numberOfLines={2} // limit to 3 lines
+          numberOfLines={2}
           ellipsizeMode="tail"
         >
           {item.description}
@@ -147,12 +228,65 @@ const index = () => {
   );
 
   if (loading) return <Loader />;
+
   return (
     <View style={{ paddingHorizontal: 10 }}>
-      <TouchableOpacity onPress={confirmLogout}>
+      {/* <TouchableOpacity onPress={confirmLogout}>
         <Text>LOGOUT</Text>
-      </TouchableOpacity>
-      {/* START OF CATEGORY */}
+      </TouchableOpacity> */}
+
+      {/* SEARCH BAR */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: COLORS.cardBackground,
+          borderRadius: 25,
+          paddingHorizontal: 15,
+          paddingVertical: 0,
+          marginTop: 15,
+          borderWidth: 1,
+          borderColor: COLORS.border,
+        }}
+      >
+        <Ionicons name="search" size={20} color={COLORS.textSecondary} />
+        <TextInput
+          style={{
+            flex: 1,
+            marginLeft: 10,
+            fontSize: 16,
+            color: COLORS.textPrimary,
+          }}
+          placeholder="Search products..."
+          placeholderTextColor={COLORS.textSecondary}
+          value={searchQuery}
+          onChangeText={handleSearch}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={clearSearch}>
+            <Ionicons
+              name="close-circle"
+              size={20}
+              color={COLORS.textSecondary}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* SEARCH RESULTS INDICATOR */}
+      {searchQuery.trim() !== "" && (
+        <Text
+          style={{
+            fontSize: 14,
+            color: COLORS.textSecondary,
+            marginBottom: 10,
+          }}
+        >
+          {products.length} result(s) for "{searchQuery}"
+        </Text>
+      )}
+
+      {/* CATEGORY FILTERS */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -184,19 +318,23 @@ const index = () => {
           </TouchableOpacity>
         ))}
       </ScrollView>
-      {/* END OF CATEGORY */}
 
-      {/* START OF FLAT LIST */}
+      {/* PRODUCTS LIST */}
       <FlatList
         data={products}
         renderItem={renderItem}
         keyExtractor={(item) => item._id}
         showsVerticalScrollIndicator={false}
         numColumns={2}
-        contentContainerStyle={{ paddingBottom: 80 }}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        contentContainerStyle={{ paddingBottom: 120 }}
         columnWrapperStyle={{
-          justifyContent: "space-between", // space between the two columns
+          justifyContent: "space-between",
         }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
         ListHeaderComponent={
           <View style={styles.header}>
             <Text style={styles.headerTitle}>BookWorm 🐛</Text>
@@ -205,21 +343,35 @@ const index = () => {
             </Text>
           </View>
         }
+        ListFooterComponent={
+          hasMore && !loading && searchQuery.trim() === "" ? (
+            <ActivityIndicator
+              size="small"
+              color={COLORS.primary}
+              style={{ margin: 20 }}
+            />
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons
-              name="book-outline"
+              name={searchQuery.trim() !== "" ? "search" : "book-outline"}
               size={60}
               color={COLORS.textSecondary}
             />
-            <Text style={styles.emptyText}>No recommendations yet</Text>
+            <Text style={styles.emptyText}>
+              {searchQuery.trim() !== ""
+                ? `No results for "${searchQuery}"`
+                : "No recommendations yet"}
+            </Text>
             <Text style={styles.emptySubtext}>
-              Be the first to share a book!
+              {searchQuery.trim() !== ""
+                ? "Try a different search term"
+                : "Be the first to share a book!"}
             </Text>
           </View>
         }
       />
-      {/* END OF FLAT LIST */}
     </View>
   );
 };

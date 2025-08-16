@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import {
+  Alert,
   FlatList,
   Image,
   StyleSheet,
@@ -14,6 +15,7 @@ import { useAuthStore } from "../../store/authStore";
 import { useCartStore } from "../../store/cartStore";
 
 export default function CartScreen() {
+  const { logout } = useAuthStore();
   const { token } = useAuthStore();
   const router = useRouter(); // ADD THIS LINE
   const {
@@ -32,6 +34,12 @@ export default function CartScreen() {
     fetchCart(token);
   }, [token]);
 
+  const confirmLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Logout", onPress: () => logout(), style: "destructive" },
+    ]);
+  };
   const handleRemoveItem = async (productId) => {
     await removeFromCart(productId, token);
   };
@@ -106,6 +114,9 @@ export default function CartScreen() {
       </Text>
       {cartItems.length === 0 ? (
         <View style={styles.emptyContainer}>
+          <TouchableOpacity onPress={confirmLogout}>
+            <Text>LOGOUT</Text>
+          </TouchableOpacity>
           <Ionicons
             name="cart-outline"
             size={80}

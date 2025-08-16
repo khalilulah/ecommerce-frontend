@@ -21,9 +21,7 @@ export default function PaymentScreen() {
   const router = useRouter();
   const { token } = useAuthStore();
   const { cartItems, totalAmount, fetchCart } = useCartStore();
-  const { createCheckoutSession, createPaymentSheet, isLoading } =
-    usePaymentStore();
-  const [sessionData, setSessionData] = useState(null);
+  const { createPaymentSheet, isLoading } = usePaymentStore();
 
   // Stripe hooks
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
@@ -78,34 +76,6 @@ export default function PaymentScreen() {
       router.replace("/success"); // or wherever you want to navigate
     }
   };
-
-  // Your existing web payment function (unchanged)
-  // const handleWebPayment = async () => {
-  //   try {
-  //     if (!cartItems || cartItems.length === 0) {
-  //       Alert.alert("Error", "Your cart is empty!");
-  //       return;
-  //     }
-
-  //     const session = await createCheckoutSession(cartItems, token);
-
-  //     if (session && session.id) {
-  //       setSessionData(session);
-
-  //       // Open Stripe checkout URL in browser
-  //       const checkoutUrl = `https://checkout.stripe.com/pay/${session.url}`;
-  //       const supported = await Linking.canOpenURL(checkoutUrl);
-
-  //       if (supported) {
-  //         await Linking.openURL(checkoutUrl);
-  //       } else {
-  //         Alert.alert("Error", "Cannot open payment link");
-  //       }
-  //     }
-  //   } catch (error) {
-  //     Alert.alert("Payment Error", error.message || "Something went wrong");
-  //   }
-  // };
 
   const renderItem = ({ item }) => (
     <View style={styles.orderItem}>
