@@ -27,7 +27,7 @@ const index = () => {
 
   const [products, setProducts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [allProducts, setAllProducts] = useState([]);
+  const [allCategoryProducts, setAllCategoryProducts] = useState([]); // Products for current category
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasmore] = useState(false);
   const [page, setPage] = useState(1);
@@ -45,36 +45,30 @@ const index = () => {
 
   const categories = ["All", "Electronics", "Clothing", "Sports", "Furniture"];
 
-  // SEARCH FUNCTION
+  // SEARCH FUNCTION - filters current category's products locally
   const handleSearch = (text) => {
     setSearchQuery(text);
-    applyFilters(allProducts, text, selectedCategory);
-  };
 
-  // UNIFIED FILTER FUNCTION - applies search and category filters to the given product list
-  const applyFilters = (productList, search, category) => {
-    let filtered = productList;
-
-    // Apply category filter first
-    if (category !== "All") {
-      filtered = filtered.filter((item) => item.category === category);
-    }
-
-    // Apply search filter
-    if (search.trim() !== "") {
-      filtered = filtered.filter(
+    if (text.trim() === "") {
+      // Show all products from current category
+      setProducts(allCategoryProducts);
+    } else {
+      // Filter current category's products by search term
+      const searchResults = allCategoryProducts.filter(
         (item) =>
-          item.name.toLowerCase().includes(search.toLowerCase()) ||
-          item.description.toLowerCase().includes(search.toLowerCase()) ||
-          item.category.toLowerCase().includes(search.toLowerCase())
+          item.name.toLowerCase().includes(text.toLowerCase()) ||
+          item.description.toLowerCase().includes(text.toLowerCase())
       );
+      setProducts(searchResults);
     }
-
-    setProducts(filtered);
   };
 
-  // FETCH DATA - always fetches all products for client-side filtering
-  const fetchGoods = async (pageNum = 1, isRefreshing = false) => {
+  // FETCH DATA - fetches products for specific category from server
+  const fetchGoods = async (
+    pageNum = 1,
+    isRefreshing = false,
+    category = selectedCategory
+  ) => {
     try {
       if (isRefreshing) {
         setRefreshing(true);
@@ -82,8 +76,11 @@ const index = () => {
         setLoading(true);
       }
 
+      // Use server-side category filtering
+      const categoryParam =
+        category && category !== "All" ? `&category=${category}` : "";
       const res = await axios.get(
-        `${API_URL}/api/products/featured?page=${pageNum}&limit=6`,
+        `${API_URL}/api/products/featured?page=${pageNum}&limit=6${categoryParam}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -91,25 +88,34 @@ const index = () => {
 
       const goods = res.data.featuredProducts;
 
-      let uniqueGoods;
+      let updatedProducts;
       if (pageNum === 1 || isRefreshing) {
         // First page or refresh - replace all products
-        uniqueGoods = goods;
+        updatedProducts = goods;
       } else {
         // Subsequent pages - merge with existing, avoid duplicates
-        uniqueGoods = [
+        updatedProducts = [
           ...new Map(
-            [...allProducts, ...goods].map((p) => [p._id, p])
+            [...allCategoryProducts, ...goods].map((p) => [p._id, p])
           ).values(),
         ];
       }
 
-      setAllProducts(uniqueGoods);
+      setAllCategoryProducts(updatedProducts);
       setHasmore(pageNum < res.data.totalPages);
       setPage(pageNum);
 
-      // Apply current filters after fetching
-      applyFilters(uniqueGoods, searchQuery, selectedCategory);
+      // Apply search filter if active
+      if (searchQuery.trim() !== "") {
+        const searchResults = updatedProducts.filter(
+          (item) =>
+            item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.description.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        setProducts(searchResults);
+      } else {
+        setProducts(updatedProducts);
+      }
     } catch (error) {
       console.error("Error fetching products:", error);
       if (error.response) {
@@ -135,28 +141,33 @@ const index = () => {
     // Only load more if:
     // 1. There are more pages available
     // 2. Not currently loading
-    // 3. Not currently searching (since search works on local data)
+    // 3. Not currently searching (search works on loaded data)
     if (hasMore && !loading && searchQuery.trim() === "") {
       await fetchGoods(page + 1);
     }
   };
 
   // FUNCTION THAT HANDLES CATEGORY SELECTION
-  const handleCategoryPress = (category) => {
+  const handleCategoryPress = async (category) => {
+    if (category === selectedCategory) return; // Don't refetch if same category
+
     setSelectedCategory(category);
-    // Apply filters to existing data
-    applyFilters(allProducts, searchQuery, category);
+    setSearchQuery(""); // Clear search when changing category
+    setPage(1);
+
+    // Fetch new category data from server
+    await fetchGoods(1, false, category);
   };
 
   // HANDLE REFRESH
   const handleRefresh = async () => {
     setPage(1);
-    await fetchGoods(1, true);
+    await fetchGoods(1, true, selectedCategory);
   };
 
   const clearSearch = () => {
     setSearchQuery("");
-    applyFilters(allProducts, "", selectedCategory);
+    setProducts(allCategoryProducts); // Show all products from current category
   };
 
   const renderItem = ({ item }) => (
@@ -243,8 +254,8 @@ const index = () => {
           backgroundColor: COLORS.cardBackground,
           borderRadius: 25,
           paddingHorizontal: 15,
-          paddingVertical: 0,
-          marginTop: 15,
+
+          marginVertical: 15,
           borderWidth: 1,
           borderColor: COLORS.border,
         }}
@@ -257,7 +268,9 @@ const index = () => {
             fontSize: 16,
             color: COLORS.textPrimary,
           }}
-          placeholder="Search products..."
+          placeholder={`Search in ${
+            selectedCategory === "All" ? "all products" : selectedCategory
+          }...`}
           placeholderTextColor={COLORS.textSecondary}
           value={searchQuery}
           onChangeText={handleSearch}
@@ -282,7 +295,8 @@ const index = () => {
             marginBottom: 10,
           }}
         >
-          {products.length} result(s) for "{searchQuery}"
+          {products.length} result(s) for "{searchQuery}" in{" "}
+          {selectedCategory === "All" ? "all categories" : selectedCategory}
         </Text>
       )}
 
@@ -290,7 +304,7 @@ const index = () => {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={{ marginVertical: 10 }}
+        style={{ marginBottom: 10 }}
       >
         {categories.map((category) => (
           <TouchableOpacity
@@ -300,13 +314,16 @@ const index = () => {
               backgroundColor:
                 selectedCategory === category ? COLORS.primary : COLORS.border,
               paddingHorizontal: 15,
-              paddingVertical: 8,
+
+              paddingTop: 3,
+              paddingBottom: 8,
               borderRadius: 20,
               marginRight: 10,
             }}
           >
             <Text
               style={{
+                alignSelf: "center",
                 color:
                   selectedCategory === category
                     ? "white"
@@ -361,13 +378,15 @@ const index = () => {
             />
             <Text style={styles.emptyText}>
               {searchQuery.trim() !== ""
-                ? `No results for "${searchQuery}"`
-                : "No recommendations yet"}
+                ? `No results for "${searchQuery}" in ${selectedCategory}`
+                : `No ${
+                    selectedCategory === "All" ? "" : selectedCategory
+                  } products yet`}
             </Text>
             <Text style={styles.emptySubtext}>
               {searchQuery.trim() !== ""
-                ? "Try a different search term"
-                : "Be the first to share a book!"}
+                ? "Try a different search term or category"
+                : "Check back later for new products!"}
             </Text>
           </View>
         }
