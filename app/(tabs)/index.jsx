@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -25,6 +26,7 @@ const index = () => {
   const { token, logout } = useAuthStore();
   const addToCart = useCartStore((state) => state.addToCart);
 
+  const router = useRouter();
   const [products, setProducts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [allCategoryProducts, setAllCategoryProducts] = useState([]); // Products for current category
@@ -164,6 +166,12 @@ const index = () => {
     setPage(1);
     await fetchGoods(1, true, selectedCategory);
   };
+  // Navigate to product details
+  const handleProductPress = (productId) => {
+    console.log("pressed");
+
+    router.push(`/products/${productId}`);
+  };
 
   const clearSearch = () => {
     setSearchQuery("");
@@ -171,71 +179,80 @@ const index = () => {
   };
 
   const renderItem = ({ item }) => (
-    <View
-      style={{
-        backgroundColor: COLORS.cardBackground,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        padding: 10,
-        margin: 4,
-        borderRadius: 16,
-        flexDirection: "column",
-        justifyContent: "space-between",
-      }}
+    <TouchableOpacity
+      onPress={() => handleProductPress(item._id)}
+      activeOpacity={0.7}
     >
-      <View style={styles.bookHeader}></View>
-      <View style={styles.bookImageContainer}>
-        <Image
-          source={{ uri: item.image }}
-          style={{
-            height: 200,
-            width: 150,
-            borderRadius: 12,
-            marginVertical: 8,
-          }}
-          contentFit="cover"
-        />
-      </View>
-      <View style={{ width: 150 }}>
-        <View style={styles.userInfo}>
-          <Text style={styles.username}>{item.name}</Text>
-        </View>
-        <Text style={{ fontWeight: "bold", fontSize: 12, marginVertical: 20 }}>
-          ${item.price}
-        </Text>
-        <Text
-          style={{ fontSize: 13, color: COLORS.textSecondary }}
-          numberOfLines={2}
-          ellipsizeMode="tail"
-        >
-          {item.description}
-        </Text>
-      </View>
-      <TouchableOpacity
+      <View
         style={{
-          backgroundColor: COLORS.primary,
-          justifyContent: "center",
-          alignItems: "center",
-          borderRadius: 12,
-          paddingVertical: 10,
-          elevation: 2,
-          marginTop: 10,
-        }}
-        onPress={() => {
-          console.log("Product ID being sent:", item._id);
-          addToCart(item._id, token);
+          backgroundColor: COLORS.cardBackground,
+          borderWidth: 1,
+          borderColor: COLORS.border,
+          padding: 10,
+          margin: 4,
+          borderRadius: 16,
+          flexDirection: "column",
+          justifyContent: "space-between",
         }}
       >
-        <Text
+        <View style={styles.bookHeader}></View>
+        <View style={styles.bookImageContainer}>
+          <Image
+            source={{ uri: item.image }}
+            style={{
+              height: 200,
+              width: 150,
+              borderRadius: 12,
+              marginVertical: 8,
+            }}
+            contentFit="cover"
+          />
+        </View>
+        <View style={{ width: 150 }}>
+          <View style={styles.userInfo}>
+            <Text style={styles.username}>{item.name}</Text>
+          </View>
+          <Text
+            style={{ fontWeight: "bold", fontSize: 12, marginVertical: 20 }}
+          >
+            ${item.price}
+          </Text>
+          <Text
+            style={{ fontSize: 13, color: COLORS.textSecondary }}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {item.description}
+          </Text>
+        </View>
+        <TouchableOpacity
           style={{
-            color: "white",
-            fontWeight: "600",
+            backgroundColor: COLORS.primary,
+            justifyContent: "center",
+            alignItems: "center",
+            borderRadius: 12,
+            paddingVertical: 10,
+            elevation: 2,
+            marginTop: 10,
+          }}
+          onPress={(event) => {
+            // Prevent the parent TouchableOpacity from being triggered
+            event.stopPropagation();
+            console.log("Product ID being sent:", item._id);
+            addToCart(item._id, token);
           }}
         >
-          Add to cart
-        </Text>
-      </TouchableOpacity>
-    </View>
+          <Text
+            style={{
+              color: "white",
+              fontWeight: "600",
+            }}
+          >
+            Add to cart
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
   );
 
   if (loading) return <Loader />;
