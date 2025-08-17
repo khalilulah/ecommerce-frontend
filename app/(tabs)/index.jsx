@@ -369,14 +369,14 @@ const index = () => {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>BookWorm 🐛</Text>
-            <Text style={styles.headerSubtitle}>
-              Discover great reads from the community👇
-            </Text>
-          </View>
-        }
+        // ListHeaderComponent={
+        //   <View style={styles.header}>
+        //     <Text style={styles.headerTitle}>BookWorm 🐛</Text>
+        //     <Text style={styles.headerSubtitle}>
+        //       Discover great reads from the community👇
+        //     </Text>
+        //   </View>
+        // }
         ListFooterComponent={
           hasMore && !loading && searchQuery.trim() === "" ? (
             <ActivityIndicator

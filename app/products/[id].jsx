@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -21,7 +20,7 @@ import { useCartStore } from "../../store/cartStore";
 const ProductDetails = () => {
   const { id } = useLocalSearchParams(); // This should be your product ID
   const router = useRouter();
-  const navigation = useNavigation();
+  // const navigation = useNavigation();
   const { token } = useAuthStore();
   const addToCart = useCartStore((state) => state.addToCart);
 
@@ -48,6 +47,10 @@ const ProductDetails = () => {
         await fetchRelatedProducts(res.data.product.category, productId);
       }
     } catch (error) {
+      if (error.response?.status === 401) {
+        // Already handled by axios interceptor (redirect + alert once)
+        return;
+      }
       console.error("Error fetching product details:", error);
       Alert.alert(
         "Error",
@@ -75,6 +78,7 @@ const ProductDetails = () => {
       );
       setRelatedProducts(filtered.slice(0, 6)); // Show max 6 related products
     } catch (error) {
+      if (error.response?.status === 401) return;
       console.error("Error fetching related products:", error);
       // Don't show error for related products, just log it
     } finally {

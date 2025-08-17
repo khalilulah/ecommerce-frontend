@@ -3,11 +3,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { API_URL } from "../constants/api";
 // const router = useRouter();
-export const useAuthStore = create((set) => ({
+export const useAuthStore = create((set, get) => ({
   user: null,
   token: null,
   isLoading: false,
   isInitialized: false,
+  isAuthenticated: false,
 
   // register user authentication
   register: async (name, email, password) => {
@@ -94,6 +95,14 @@ export const useAuthStore = create((set) => ({
     }
   },
 
+  forceLogout: async () => {
+    const { logout } = get();
+    await logout();
+
+    // You can add additional logic here like showing notifications
+    console.log("User logged out due to token expiry");
+  },
+
   //check Authentication
   checkAuth: async () => {
     set({ isLoading: true });
@@ -108,12 +117,16 @@ export const useAuthStore = create((set) => ({
         user: jsonUser,
         isLoading: false,
         isInitialized: true,
+        isAuthenticated: !!token,
       });
     } catch (error) {
       console.log(error);
       set({
+        token: null, // ✅ Add these
+        user: null,
         isLoading: false,
         isInitialized: true,
+        isAuthenticated: false,
       });
     }
   },
@@ -121,14 +134,18 @@ export const useAuthStore = create((set) => ({
   //logout
   logout: async () => {
     try {
-      const token = await AsyncStorage.removeItem("token");
-      const user = await AsyncStorage.removeItem("user");
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
 
       // const jsonUser = user ? JSON.parse(user) : null;
       // if (router) {
       //   router.replace("/(auth)");
       // }
-      set({ token, user: null });
+      set({
+        token: null, // ✅ This was broken before
+        user: null,
+        isAuthenticated: false,
+      });
     } catch (error) {
       console.log(error);
     }

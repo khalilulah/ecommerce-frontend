@@ -1,16 +1,19 @@
 import { StripeProvider } from "@stripe/stripe-react-native";
-
 import { Stack, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import SafeScreen from "../components/SafeScreen";
 import { useAuthStore } from "../store/authStore";
+import { setupAxiosInterceptors } from "../utils/tokenManager";
 
 export default function RootLayout() {
   const { token, checkAuth } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
+    // Setup axios interceptors once when app starts
+    setupAxiosInterceptors();
+    // Load saved auth data
     checkAuth();
   }, []);
 
@@ -19,7 +22,7 @@ export default function RootLayout() {
     const timeout = setTimeout(() => {
       if (token) {
         router.replace("/(tabs)");
-      } else {
+      } else if (token === null) {
         router.replace("/(auth)");
       }
     }, 500);

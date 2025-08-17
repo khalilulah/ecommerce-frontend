@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { Link } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -21,11 +21,11 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState();
   // const [isLoading, setIsLoading] = useState();
-  const { login, isLoading, checkAuth } = useAuthStore();
+  const { login, isLoading } = useAuthStore();
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  // useEffect(() => {
+  //   checkAuth();
+  // }, []);
   const insets = useSafeAreaInsets();
 
   const handleLogin = async () => {
