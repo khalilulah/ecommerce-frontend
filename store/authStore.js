@@ -11,35 +11,30 @@ export const useAuthStore = create((set, get) => ({
   isAuthenticated: false,
 
   // register user authentication
-  register: async (name, email, password) => {
+  // register
+  register: async (username, email, password) => {
     set({ isLoading: true });
     try {
       const response = await fetch(`${API_URL}/api/auth/signup`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          email,
-          password,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, email, password }),
       });
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "something went wrong");
+
+      // ✅ your backend sends "newUser"
       const safeUser = {
-        id: data.data.user.id,
-        name: data.data.user.name,
-        email: data.data.user.email,
+        id: data.newUser._id,
+        name: data.newUser.username,
+        email: data.newUser.email,
       };
 
       await AsyncStorage.setItem("user", JSON.stringify(safeUser));
-      await AsyncStorage.setItem("token", data.data.token);
-      set({ token: data.data.token, user: safeUser, isLoading: false });
-      // if (router) {
-      //   router.replace("/(tabs)");
-      // }
+      await AsyncStorage.setItem("token", data.token);
+
+      set({ token: data.token, user: safeUser, isLoading: false });
       return { success: true };
     } catch (error) {
       set({ isLoading: false });
@@ -47,51 +42,34 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  //login
+  // login
   login: async (email, password) => {
     set({ isLoading: true });
     try {
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
-
-      console.log("Response status:", response.status);
-      console.log("Response ok:", response.ok);
-      // console.log(response);
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "something went wrong");
+
+      // ✅ your backend sends "data.user"
       const safeUser = {
         id: data.data.user._id,
-        name: data.data.user.name,
+        name: data.data.user.username,
         email: data.data.user.email,
       };
 
       await AsyncStorage.setItem("user", JSON.stringify(safeUser));
       await AsyncStorage.setItem("token", data.data.token);
-      // ("");
-      console.log(data.data.token);
-      console.log(safeUser, "safe");
 
       set({ token: data.data.token, user: safeUser, isLoading: false });
-      // if (router) {
-      //   router.replace("/(tabs)");
-      // }
-
       return { success: true };
     } catch (error) {
       set({ isLoading: false });
-      const errorMessage = error.message || "An unexpected error occurred";
-      return { success: false, error: errorMessage };
-    } finally {
-      set({ isLoading: false });
+      return { success: false, error: error.message };
     }
   },
 
